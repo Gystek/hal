@@ -8,7 +8,7 @@ Roadmap
 -------
 
 - [x] SAT-solver
-- [ ] DIMACS parser
+- [x] DIMACS parser
 - [ ] Optimisations
 
 Building
