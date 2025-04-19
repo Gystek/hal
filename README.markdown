@@ -7,7 +7,7 @@ DIMACS files as input.
 Roadmap
 -------
 
-- [ ] SAT-solver
+- [x] SAT-solver
 - [ ] DIMACS parser
 - [ ] Optimisations
 
