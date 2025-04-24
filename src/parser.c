@@ -30,9 +30,13 @@ parse_dimacs (fp, cnf)
 	  break;
 	case 'p':
 	  if (fscanf (fp, " cnf %lu %lu", &cnf->var_n, &cnf->clause_n) != 2)
-	    return 1;
+	    {
+	      fprintf (stderr, "hal: invalid problem string\n");
+	      return 1;
+	    }
 	  goto clauses;
 	default:
+	  fprintf (stderr, "hal: invalid character: %c\n", c);
 	  return 1;
 	}
     }
@@ -40,9 +44,9 @@ parse_dimacs (fp, cnf)
   return 1;
  clauses:
   if (init_cnf (cnf, cnf->var_n, cnf->clause_n))
-    return -1;
+      return -1;
 
-  for (i = 0; cnf->clause_n;)
+  for (i = 0; i < cnf->clause_n;)
     {
       /* if the clause is valid, this will be set to 0 and the total
        * number of clauses decreased
@@ -51,23 +55,34 @@ parse_dimacs (fp, cnf)
 
       for (;;)
 	{
-	  ssize_t v;
+	  ssize_t v = 0;
 	  size_t w;
 	  int8_t x, y;
 
-	  if (fscanf (fp, "%ld", &v) != 1)
-	    return 1;
+	  if (fscanf (fp, " %ld", &v) != 1)
+	    {
+	      fprintf (stderr, "hal: failed to read character\n");
+	      return 1;
+	    }
 
 	  if (v == 0)
-	    break;
+	      break;
 
 	  /* indexing starts at 1 */
 	  w = llabs (v) - 1;
-	  y = (int8_t)(v / (w + 1));
+
+	  if (w > cnf->var_n)
+	    {
+	      fprintf (stderr, "hal: invalid variable: %lu\n", w);
+
+	      return 1;
+	    }
+
+	  y = v < 0 ? -1 : 1;
 	  x = cnf->clauses[i][w];
 
 	  if (x != y && x != 0)
-	    skip = 1;
+	    skip = 0;
 
 	  cnf->clauses[i][w] = y;
 	}

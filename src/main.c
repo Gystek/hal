@@ -5,14 +5,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int
 process_file (fp)
      FILE *fp;
 {
   int		r = 1;
+  size_t	rcl = 0;
   int8_t	*sig;
+  int		sol = -1;
   struct cnf	cnf;
+
+  clock_t	beg, end;
 
   if ((r = parse_dimacs (fp, &cnf)))
     {
@@ -23,37 +28,52 @@ process_file (fp)
   sig = malloc (cnf.var_n);
 
   if (!sig)
-    goto cleanup;
+    {
+        destroy_cnf (&cnf);
+	goto cleanup;
+    }
 
   memset (sig, 0, cnf.var_n);
 
-  if (solve (&cnf, sig))
+  beg = clock ();
+  sol = solve (&cnf, sig, &rcl);
+  end = clock ();
+
+  switch (sol)
     {
-      size_t i;
+    case 1:
+      {
+	size_t i;
 
-      for (i = 0; i < cnf.var_n; i++)
-	{
-	  if (i)
-	    putchar (' ');
-	  printf ("%hd", sig[i] >= 0 ? 1 : 0);
-	}
+	for (i = 0; i < cnf.var_n; i++)
+	  {
+	    if (i)
+	      putchar (' ');
+	    printf ("%hd", sig[i] >= 0 ? 1 : 0);
+	  }
 
-      putchar ('\n');
+	putchar ('\n');
 
-      r = 0;
-      goto cleanup;
-    }
-  else
-    {
+	r = 0;
+	goto cleanup;
+      }
+    case 0:
       puts ("⊥");
 
       r = 1;
       goto cleanup;
+    default:
+      fprintf (stderr, "hal: failed to compute satisfiability\n");
+      break;
     }
 
  cleanup:
+#ifdef _PERF
+  if (sol >= 0)
+    printf ("solved in %ld calls (%f seconds)\n",
+	    rcl, (double)(end - beg) / CLOCKS_PER_SEC);
+#endif
   free (sig);
-  destroy_cnf (&cnf);
 
   return r;
 }
@@ -63,7 +83,7 @@ main (argc, argv)
      int argc;
      char *const argv[];
 {
-  int i;
+  int i, r = 0;
 
   if (argc == 1)
     {
@@ -72,7 +92,7 @@ main (argc, argv)
 
   for (i = 1; i < argc; i++)
     {
-      int r, s;
+      int s;
 
       FILE *fp;
 
@@ -81,14 +101,14 @@ main (argc, argv)
       else
 	fp = fopen (argv[i], "r");
 
-      r = process_file (fp);
+      printf ("%s: ", argv[i]);
+
+      r |= process_file (fp);
 
       if (!s)
 	fclose (fp);
 
-      if (r)
-	return r;
     }
 
-  return 0;
+  return r;
 }

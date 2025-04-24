@@ -1,7 +1,8 @@
 CC := gcc
 LD := $(CC)
 
-CFLAGS := -ansi -Wall -Wextra -Wwrite-strings -Wno-variadic-macros -O1 -Iinclude/
+CFLAGS := -ansi -Wall -Wextra -Wwrite-strings -Wno-variadic-macros -O1 -Iinclude/ -g -D_PERF # -D_DEBUG
+
 LDFLAGS :=
 
 CSRC := src/main.c src/solver/cnf.c src/solver/solve.c src/parser.c

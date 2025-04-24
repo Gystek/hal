@@ -3,6 +3,6 @@
 
 # include <solver/cnf.h>
 
-int solve (struct cnf *, int8_t []);
+int solve (struct cnf *, int8_t *, size_t *);
 
 #endif /* SOLVER_SOLVE_H_ */

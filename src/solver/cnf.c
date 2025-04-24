@@ -49,7 +49,7 @@ copy_cnf (dest, src)
 
   dest->var_n = src->var_n;
   dest->clause_n = src->clause_n;
-  dest->_clause_c = src->clause_n;
+  dest->_clause_c = src->_clause_c;
 
   dest->clauses = malloc (sizeof(clause_t) * dest->clause_n);
 
@@ -94,9 +94,14 @@ add_clause (cnf)
       cnf->clauses = nc;
     }
 
-  memset (cnf->clauses[cnf->clause_n++], 0, cnf->var_n);
+  cnf->clauses[cnf->clause_n] = malloc (cnf->var_n);
 
-  return (cnf->clause_n - 1);
+  if (!cnf->clauses[cnf->clause_n])
+    return 0;
+
+  memset (cnf->clauses[cnf->clause_n], 0, cnf->var_n);
+
+  return (++cnf->clause_n);
 }
 
 int
@@ -106,13 +111,15 @@ del_clause (cnf, i)
 {
   size_t j;
 
-  if (i < cnf->clause_n)
+  if (i >= cnf->clause_n)
     return 1;
 
   for (j = i; j < cnf->clause_n - 1; j++)
     {
       cnf->clauses[j] = cnf->clauses[j + 1];
     }
+
+  cnf->clause_n -= 1;
 
   return 0;
 }
