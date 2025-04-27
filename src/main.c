@@ -1,7 +1,7 @@
 #include <getopt.h>
 #include <parser.h>
-#include <solver/cnf.h>
-#include <solver/solve.h>
+#include <cnf.h>
+#include <solve.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +18,9 @@ process_file (fp)
   struct cnf	cnf;
 
   clock_t	beg, end;
+
+  (void)beg;
+  (void)end;
 
   if ((r = parse_dimacs (fp, &cnf)))
     {
@@ -68,6 +71,11 @@ process_file (fp)
     }
 
  cleanup:
+
+#ifdef _HEURISTICS_JWOS
+  free (jwos_j);
+#endif
+
 #ifdef _PERF
   if (sol >= 0)
     printf ("solved in %ld calls (%f seconds)\n",

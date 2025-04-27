@@ -1,12 +1,11 @@
-CC := gcc
-LD := $(CC)
+# hal - CNF-SAT solver
 
-CFLAGS := -ansi -Wall -Wextra -Wwrite-strings -Wno-variadic-macros -O1 -Iinclude/ -g -D_PERF # -D_DEBUG
+include config.mk
 
-LDFLAGS :=
-
-CSRC := src/main.c src/solver/cnf.c src/solver/solve.c src/parser.c
+CSRC := src/main.c src/cnf.c src/solve.c src/parser.c
 COBJ := $(CSRC:.c=.o)
+
+CFLAGS := $(CFLAGS) $(ADDCFLAGS)
 
 all: hal
 hal: $(COBJ)
@@ -16,4 +15,21 @@ clean:
 	rm -f hal
 	rm -f $(COBJ)
 
-.PHONY: clean all
+dist: clean
+	mkdir -p hal-$(VERSION)
+	cp -R COPYING Makefile README.markdown config.mk\
+		INSTALL hal-$(VERSION)
+	tar -cf hal-$(VERSION) | gzip > hal-$(VERSION).tar.gz
+	rm -rf hal-$(VERSION)
+
+INSTALL=install
+INSTALL_PROGAM=${INSTALL}
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+
+install: hal
+	mkdir -p $(BINDIR)
+	$(INSTALL_PROGRAM) hal $(BINDIR)
+uninstall:
+	rm -f $(BINDIR)/hal
+
+.PHONY: all clean dist install uninstall

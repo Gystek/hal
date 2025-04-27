@@ -1,0 +1,12 @@
+Instructions for installation
+-----------------------------
+
+These instructions should be valid for most GNU/Linux and UNIX-like
+systems.
+
+You will need to have a 'make' program, an 'install' program and
+a C compiler installed on your machine.
+
+First, configure the installation in the 'config.mk' file. Then
+run 'make' followed by 'make install' to install the program on
+your computer.

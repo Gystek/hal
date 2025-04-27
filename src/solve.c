@@ -1,4 +1,6 @@
-#include <solver/solve.h>
+#include <assert.h>
+#include <solve.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -185,8 +187,8 @@ find_pure (cnf, i, v)
   return 0;
 }
 
-size_t
-select_variable (cnf, sig)
+ssize_t
+no_heuristics (cnf, sig)
      struct cnf *cnf;
      int8_t	*sig;
 {
@@ -199,13 +201,79 @@ select_variable (cnf, sig)
       for (j = 0; j < cnf->var_n; j++)
 	{
 	  if (cnf->clauses[i][j] && !sig[j])
-	    return j;
+	      return j;
 	}
     }
 
-  fprintf (stderr, "hal: failed to select variable\n");
+  return -1;
+}
 
-  exit (1);
+ssize_t
+jwos (cnf, sig)
+     struct cnf *cnf;
+     int8_t	*sig;
+{
+  ssize_t	m = -1;
+  double	mj = 0;
+
+  size_t i;
+
+  if (jwos_j)
+    memset (jwos_j, 0, cnf->var_n * sizeof(double));
+
+  for (i = 0; i < cnf->clause_n; i++)
+    {
+      size_t j, w = 0;
+      double iw;
+
+      for (j = 0; j < cnf->var_n; j++)
+	{
+	  if (cnf->clauses[i][j])
+	    w += 1;
+	}
+
+      assert (w != 0);
+
+      iw = 1 / (double)w;
+
+      for (j = 0; j < cnf->var_n; j++)
+	{
+	  if (cnf->clauses[i][j])
+	    jwos_j[j] += iw;
+	}
+    }
+
+  for (i = 0; i < cnf->var_n; i++)
+    {
+      double j = jwos_j[i];
+
+      if (j > mj && !sig[i])
+	{
+	  m = i;
+	  mj = j;
+	}
+    }
+
+  return m;
+}
+
+ssize_t
+select_variable (cnf, sig)
+     struct cnf *cnf;
+     int8_t	*sig;
+{
+  ssize_t r;
+
+#ifdef _HEURISTICS_JWOS
+  r = jwos (cnf, sig);
+#else
+  r = no_heuristics (cnf, sig);
+#endif
+
+  if (r < 0)
+    fprintf (stderr, "hal: failed to select variable\n");
+
+  return r;
 }
 
 static void
@@ -234,13 +302,34 @@ solve (cnf, sig, rcl)
      size_t	*rcl;
 {
   size_t	i, j;
+  ssize_t	is;
   int8_t	v, *save;
   struct cnf	cnf2;
 
   *rcl += 1;
 
+#ifdef _RECURSION_THRESHOLD
+  if (*rcl > _RECURSION_THRESHOLD)
+    {
+      fprintf (stderr, "hal: exceeded recursion threshold\n");
+
+      return -1;
+    }
+#endif
+
+#ifdef _HEURISTICS_JWOS
+  if (!jwos_j)
+    {
+      jwos_j = calloc (cnf->var_n, sizeof(double));
+
+      if (!jwos_j)
+	return -1;
+    }
+#endif
+
 #ifdef _DEBUG
-  printf ("> solving for %ld clauses\n", cnf->clause_n);
+  printf ("\033[2J\033[0;0H> solving for %ld clauses\n", cnf->clause_n);
+  printf ("%ld calls\n", *rcl);
   print_sig (cnf, sig);
 #endif
 
@@ -262,7 +351,14 @@ solve (cnf, sig, rcl)
   if (empty_clause (cnf))
       return 0;
 
-  i = select_variable (cnf, sig);
+  is = select_variable (cnf, sig);
+
+  if (is < 0)
+    return -1;
+
+  i = (size_t)is;
+
+  assert (!sig[i]);
 
 #ifdef _DEBUG
   printf ("- selecting variable %ld\n", i);
@@ -285,8 +381,9 @@ solve (cnf, sig, rcl)
   j -= 1;
 
   cnf->clauses[j][i] = -1;
+
 #ifdef _DEBUG
-  printf ("\t== Γ[%ld = -1] ==", i);
+  printf ("\t== Γ[%ld = %hd] ==", i, -1);
 #endif
 
   copy_cnf (&cnf2, cnf);
@@ -308,7 +405,7 @@ solve (cnf, sig, rcl)
   cnf->clauses[j][i] = 1;
 
 #ifdef _DEBUG
-  printf ("\t== Γ[%ld = 1] ==", i);
+  printf ("\t== Γ[%ld = %hd] ==", i, 1);
 #endif
 
   return (solve (cnf, sig, rcl));

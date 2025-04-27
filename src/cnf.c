@@ -1,4 +1,4 @@
-#include <solver/cnf.h>
+#include <cnf.h>
 #include <stdlib.h>
 #include <string.h>
 
