@@ -25,7 +25,7 @@ parse_dimacs (fp, cnf)
       switch (c)
 	{
 	case 'c':
-	  for (; c != '\n'; c = fgetc (fp))
+	  for (; c != '\n' && c != 0; c = fgetc (fp))
 	    ;
 	  break;
 	case 'p':
@@ -55,9 +55,30 @@ parse_dimacs (fp, cnf)
 
       for (;;)
 	{
+	  char c;
 	  ssize_t v = 0;
 	  size_t w;
 	  int8_t x, y;
+
+	  switch ((c = fgetc (fp)))
+	    {
+	    case 'c':
+	      for (; c != '\n' && c != 0; c = fgetc (fp))
+		;
+	      continue;
+	    case ' ':
+	    case '\n':
+	    case '\t':
+	    case '\r':
+	      for (; c == ' ' || c == '\n' || c == '\t' || c == '\r'; c = fgetc (fp))
+		;
+	      if (c != 0)
+		ungetc (c, fp);
+	      continue;
+	    default:
+	      ungetc (c, fp);
+	      break;
+	    }
 
 	  if (fscanf (fp, " %ld", &v) != 1)
 	    {
