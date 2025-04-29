@@ -1,15 +1,18 @@
 #include <getopt.h>
 #include <parser.h>
 #include <cnf.h>
+#include <linux/limits.h>
 #include <solve.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 int
-process_file (fp)
+process_file (fp, outfp)
      FILE *fp;
+     FILE *outfp;
 {
   int		r = 1;
   size_t	rcl = 0;
@@ -48,20 +51,41 @@ process_file (fp)
       {
 	size_t i;
 
+	if (outfp)
+	  fputs ("SAT\n", outfp);
+
 	for (i = 0; i < cnf.var_n; i++)
 	  {
 	    if (i)
 	      putchar (' ');
-	    printf ("%hd", sig[i] >= 0 ? 1 : 0);
+	    if (sig[i] < 0)
+	      putchar ('-');
+	    printf ("%ld", i + 1);
+
+	    if (outfp)
+	      {
+		if (sig[i] < 0)
+		  fputc ('-', outfp);
+
+		fprintf (outfp, "%ld ", i + 1);
+	      }
 	  }
 
 	putchar ('\n');
+
+	if (outfp)
+	  {
+	    fputs ("0\n", outfp);
+	  }
 
 	r = 0;
 	goto cleanup;
       }
     case 0:
       puts ("⊥");
+
+      if (outfp)
+	fputs ("UNSAT", outfp);
 
       r = 1;
       goto cleanup;
@@ -91,14 +115,43 @@ main (argc, argv)
      int argc;
      char *const argv[];
 {
-  int i, r = 0;
+  FILE	*outfp;
+  char	outfile[PATH_MAX] = { 0 };
+  int	opt, i, r = 0;
 
-  if (argc == 1)
+  while ((opt = getopt (argc, argv, "s:")) != -1)
     {
-      return process_file (stdin);
+      switch (opt)
+	{
+	case 's':
+	  strcpy (outfile, optarg);
+	  break;
+	default:
+	  fprintf (stderr, "Usage: %s [-s outfile] [file...]\n", argv[0]);
+	  return EXIT_FAILURE;
+	}
     }
 
-  for (i = 1; i < argc; i++)
+  if (strlen (outfile) == 0)
+    outfp = NULL;
+  else
+    {
+      outfp = fopen (outfile, "w");
+
+      if (!outfp)
+	{
+	  perror ("hal");
+
+	  return EXIT_FAILURE;
+	}
+    }
+
+  if (optind >= argc)
+    {
+      return process_file (stdin, outfp);
+    }
+
+  for (i = optind; i < argc; i++)
     {
       int s;
 
@@ -111,12 +164,14 @@ main (argc, argv)
 
       printf ("%s: ", argv[i]);
 
-      r |= process_file (fp);
+      r |= process_file (fp, outfp);
 
       if (!s)
 	fclose (fp);
-
     }
+
+  if (outfp)
+    fclose (outfp);
 
   return r;
 }
